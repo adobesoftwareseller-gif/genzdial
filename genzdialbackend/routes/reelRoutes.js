@@ -4,6 +4,7 @@ const fs = require('fs');
 const multer = require('multer');
 const Reel = require('../models/Reel');
 const { authRequired } = require('../middleware/auth');
+const { isConfigured: cloudinaryOn, uploadBuffer, destroyByUrl } = require('../config/cloudinary');
 
 const router = express.Router();
 
@@ -11,15 +12,19 @@ const MAX_REELS = 10;
 
 const UPLOADS_ROOT = process.env.UPLOADS_ROOT || path.join(__dirname, '..', 'uploads');
 const uploadDir = path.join(UPLOADS_ROOT, 'reels');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!cloudinaryOn && !fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadDir),
-    filename: (_req, file, cb) => {
-        const safe = file.originalname.replace(/[^a-z0-9.\-_]/gi, '_');
-        cb(null, `${Date.now()}-${safe}`);
-    },
-});
+// With Cloudinary on, keep the file in memory and stream it up; otherwise fall
+// back to saving on local disk (dev without a Cloudinary account).
+const storage = cloudinaryOn
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: (_req, _file, cb) => cb(null, uploadDir),
+        filename: (_req, file, cb) => {
+            const safe = file.originalname.replace(/[^a-z0-9.\-_]/gi, '_');
+            cb(null, `${Date.now()}-${safe}`);
+        },
+    });
 
 const upload = multer({
     storage,
@@ -40,10 +45,20 @@ router.get('/all', authRequired, async (_req, res) => {
     res.json(reels);
 });
 
-router.post('/upload', authRequired, upload.single('video'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file' });
-    res.json({ url: `/uploads/reels/${req.file.filename}` });
-}); router.post('/', authRequired, async (req, res) => {
+router.post('/upload', authRequired, upload.single('video'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No file' });
+        if (cloudinaryOn) {
+            const result = await uploadBuffer(req.file.buffer, { folder: 'genzdial/reels', resourceType: 'video' });
+            return res.json({ url: result.secure_url });
+        }
+        res.json({ url: `/uploads/reels/${req.file.filename}` });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+router.post('/', authRequired, async (req, res) => {
     try {
         const count = await Reel.countDocuments();
         if (count >= MAX_REELS) {
@@ -69,10 +84,8 @@ router.put('/:id', authRequired, async (req, res) => {
 router.delete('/:id', authRequired, async (req, res) => {
     const reel = await Reel.findByIdAndDelete(req.params.id);
     if (!reel) return res.status(404).json({ error: 'Not found' });
-    if (reel.video && reel.video.startsWith('/uploads/reels/')) {
-// const fp = path.join(__dirname, '..', reel.video);
-// fs.promises.unlink(fp).catch(() => { });
-    }
+    // best-effort cleanup of the Cloudinary asset (no-op for legacy /uploads paths)
+    if (reel.video) destroyByUrl(reel.video, 'video');
     res.json({ ok: true });
 });
 
