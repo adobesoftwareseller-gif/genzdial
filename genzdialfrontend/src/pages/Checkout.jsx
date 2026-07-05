@@ -158,7 +158,9 @@ export default function Checkout() {
                         setStep('done');
                         if (!buyNow) cart.clearCart();
                     } catch (err) {
-                        setError("Payment verification failed! Our team will review this transaction.");
+                        const reason = err.response?.data?.message || err.message;
+                        console.error("verify-payment failed:", err.response?.data || err);
+                        setError("Payment verification failed: " + reason);
                     } finally {
                         setPlacing(false);
                     }

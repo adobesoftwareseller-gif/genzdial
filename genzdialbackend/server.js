@@ -15,6 +15,10 @@ const reelRoutes = require('./routes/reelRoutes');
 const testimonialRoutes = require('./routes/testimonialRoutes');
 const mediaLogosRoutes = require('./routes/mediaLogoRoutes');
 const faqRoutes = require('./routes/faqRoutes');
+const promoMessageRoutes = require('./routes/promoMessageRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
+const couponRoutes = require('./routes/couponRoutes');
+const pageRoutes = require('./routes/pageRoutes');
 
 const app = express();
 
@@ -41,6 +45,10 @@ app.use('/api/reels', reelRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/media-logos', mediaLogosRoutes);
 app.use('/api/faqs', faqRoutes);
+app.use('/api/promo-messages', promoMessageRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/coupons', couponRoutes);
+app.use('/api/pages', pageRoutes);
 
 // Database & Server
 const PORT = process.env.PORT || 5000;
