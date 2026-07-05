@@ -9,7 +9,8 @@ const router = express.Router();
 
 const MAX_REELS = 10;
 
-const uploadDir = path.join(__dirname, '..', 'uploads', 'reels');
+const UPLOADS_ROOT = process.env.UPLOADS_ROOT || path.join(__dirname, '..', 'uploads');
+const uploadDir = path.join(UPLOADS_ROOT, 'reels');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({

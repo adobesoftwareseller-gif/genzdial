@@ -1,0 +1,57 @@
+# Render Blueprint — deploys the GenZDial backend + frontend together.
+# In Render: New → Blueprint → connect this repo. It reads this file.
+# Env vars marked `sync: false` are secrets you type into the Render dashboard.
+services:
+  # ---------- BACKEND (Express API + persistent disk for uploads) ----------
+  - type: web
+    name: genzdial-backend
+    runtime: node
+    rootDir: genzdialbackend
+    plan: starter                # required: persistent disks need a paid plan
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/products
+    disk:
+      name: uploads              # survives redeploys; holds reels + QR images
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: UPLOADS_ROOT
+        value: /var/data/uploads # matches the disk mount above
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: CLIENT_URL
+        sync: false              # set to the frontend URL once it exists
+
+  # ---------- FRONTEND (Vite static build) ----------
+  - type: web
+    name: genzdial-frontend
+    runtime: static
+    rootDir: genzdialfrontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite            # SPA: send all paths to index.html
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false              # set to https://genzdial-backend.onrender.com/api
+      - key: VITE_RAZORPAY_KEY_ID
+        value: rzp_test_T43iPj7kF0K5zT

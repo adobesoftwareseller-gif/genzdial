@@ -26,8 +26,10 @@ const app = express();
 app.use(cors({ origin: true, credentials: true })); // CORS ko enable kiya hai
 app.use(express.json({ limit: '25mb' }));
 
-// Serve uploaded files (reels, banners, etc.) as static assets
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded files (reels, banners, etc.) as static assets.
+// UPLOADS_ROOT lets us point at a persistent disk in production (e.g. Render).
+const UPLOADS_ROOT = process.env.UPLOADS_ROOT || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(UPLOADS_ROOT));
 
 // Razorpay
 const razorpay = new Razorpay({
