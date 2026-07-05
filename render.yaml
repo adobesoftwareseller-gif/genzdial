@@ -7,17 +7,14 @@ services:
     name: genzdial-backend
     runtime: node
     rootDir: genzdialbackend
-    plan: starter                # required: persistent disks need a paid plan
+    plan: free                   # free tier: no card required
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/products
-    disk:
-      name: uploads              # survives redeploys; holds reels + QR images
-      mountPath: /var/data
-      sizeGB: 1
+    # NOTE: free tier has NO persistent disk — admin-uploaded reels/QR reset on
+    # redeploy or after the service spins down. Fine for a demo. To keep uploads
+    # permanently, switch to Cloudinary (free) — ask and I'll wire it up.
     envVars:
-      - key: UPLOADS_ROOT
-        value: /var/data/uploads # matches the disk mount above
       - key: MONGO_URI
         sync: false
       - key: JWT_SECRET
