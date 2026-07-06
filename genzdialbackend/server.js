@@ -19,6 +19,7 @@ const promoMessageRoutes = require('./routes/promoMessageRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const pageRoutes = require('./routes/pageRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api/promo-messages', promoMessageRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/pages', pageRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 // Database connection (shared across Render + Vercel).
 // On Vercel the process is reused between invocations, so we cache the

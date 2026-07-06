@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../api.js';
+import api, { uploadImage } from '../api.js';
 import Loader from './Loader.jsx';
 
 const empty = { title: '', subtitle: '', image: '', link: '/shop', placement: 'hero', order: 0, active: true };
@@ -42,12 +42,16 @@ export default function AdminBanners() {
 
     const onChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-    const onImage = (e) => {
+    const onImage = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => onChange('image', reader.result);
-        reader.readAsDataURL(file);
+        try {
+            const url = await uploadImage(file);
+            onChange('image', url);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Image upload failed');
+        }
+        e.target.value = '';
     };
 
     return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../api.js';
+import api, { uploadImage } from '../api.js';
 import Loader from './Loader.jsx';
 
 const empty = {
@@ -59,12 +59,16 @@ export default function AdminProducts() {
             colorVariants: f.colorVariants.filter((_, i) => i !== idx),
         }));
     };
-    const onColorImage = (idx, e) => {
+    const onColorImage = async (idx, e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => updateColorVariant(idx, 'image', reader.result);
-        reader.readAsDataURL(file);
+        try {
+            const url = await uploadImage(file);
+            updateColorVariant(idx, 'image', url);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Image upload failed');
+        }
+        e.target.value = '';
     };
     const cancel = () => { setEditing(null); setForm(empty); };
 
@@ -91,24 +95,27 @@ export default function AdminProducts() {
 
     const onChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-    const onImage = (e) => {
+    const onImage = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => onChange('image', reader.result);
-        reader.readAsDataURL(file);
+        try {
+            const url = await uploadImage(file);
+            onChange('image', url);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Image upload failed');
+        }
+        e.target.value = '';
     };
 
-    const addGalleryImages = (e) => {
+    const addGalleryImages = async (e) => {
         const files = Array.from(e.target.files || []);
         if (!files.length) return;
-        Promise.all(files.map((file) => new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(file);
-        }))).then((results) => {
-            setForm((f) => ({ ...f, images: [...(f.images || []), ...results] }));
-        });
+        try {
+            const urls = await Promise.all(files.map((file) => uploadImage(file)));
+            setForm((f) => ({ ...f, images: [...(f.images || []), ...urls] }));
+        } catch (err) {
+            alert(err.response?.data?.error || 'Image upload failed');
+        }
         e.target.value = '';
     };
 

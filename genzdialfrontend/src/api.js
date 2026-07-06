@@ -38,6 +38,17 @@ export const assetUrl = (u) => {
     return `${SERVER_ORIGIN}${u.startsWith('/') ? '' : '/'}${u}`;
 };
 
+// Upload an image file to the backend, which stores it on Cloudinary and
+// returns a short URL. Use this everywhere instead of embedding base64 in
+// documents (base64 in MongoDB is what made the site slow).
+export const uploadImage = (file) => {
+    const data = new FormData();
+    data.append('image', file);
+    return api
+        .post('/uploads/image', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then((r) => r.data.url);
+};
+
 // API Calls
 export const fetchProducts = (params = {}) =>
     api.get('/products', { params }).then((r) => r.data);
