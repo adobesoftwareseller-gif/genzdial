@@ -52,11 +52,29 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/pages', pageRoutes);
 
-// Database & Server
-const PORT = process.env.PORT || 5000;
+// Database connection (shared across Render + Vercel).
+// On Vercel the process is reused between invocations, so we cache the
+// connection promise and reuse it instead of reconnecting every request.
+let dbPromise = null;
+function bootstrap() {
+    if (mongoose.connection.readyState === 1) return Promise.resolve();
+    if (!dbPromise) {
+        dbPromise = mongoose.connect(process.env.MONGO_URI).catch((err) => {
+            dbPromise = null; // allow retry on next invocation
+            console.error("DB Connection Error:", err);
+            throw err;
+        });
+    }
+    return dbPromise;
+}
 
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    })
-    .catch(err => console.error("DB Connection Error:", err));
+// Only start a long-lived HTTP server when run directly (e.g. Render / local).
+// On Vercel, api/index.js imports { app, bootstrap } instead.
+if (require.main === module) {
+    const PORT = process.env.PORT || 5000;
+    bootstrap()
+        .then(() => app.listen(PORT, () => console.log(`Server running on port ${PORT}`)))
+        .catch(err => console.error("Startup failed:", err));
+}
+
+module.exports = { app, bootstrap };
