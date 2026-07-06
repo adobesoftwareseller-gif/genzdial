@@ -59,7 +59,15 @@ let dbPromise = null;
 function bootstrap() {
     if (mongoose.connection.readyState === 1) return Promise.resolve();
     if (!dbPromise) {
-        dbPromise = mongoose.connect(process.env.MONGO_URI).catch((err) => {
+        dbPromise = mongoose.connect(process.env.MONGO_URI, {
+            // Serverless-friendly options: fail fast instead of hanging for
+            // 30s+ when Atlas is unreachable, and keep the per-instance pool
+            // small (each Vercel lambda has its own pool).
+            serverSelectionTimeoutMS: 8000,
+            socketTimeoutMS: 20000,
+            maxPoolSize: 5,
+            minPoolSize: 0,
+        }).catch((err) => {
             dbPromise = null; // allow retry on next invocation
             console.error("DB Connection Error:", err);
             throw err;

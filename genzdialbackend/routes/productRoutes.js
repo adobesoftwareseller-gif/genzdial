@@ -7,14 +7,26 @@ const router = express.Router();
 // GET /api/products  (supports ?category=&trending=&newArrival=&q=)
 router.get('/', async (req, res) => {
     try {
-        const { category, trending, newArrival, q } = req.query;
+        const { category, trending, newArrival, q, limit } = req.query;
         const filter = {};
         if (category) filter.category = category;
         if (trending === 'true') filter.trending = true;
         if (newArrival === 'true') filter.newArrival = true;
         if (q) filter.name = { $regex: q, $options: 'i' };
 
-        const products = await Product.find(filter).sort({ createdAt: -1 });
+        // List view: exclude the heavy gallery/variant fields (which may hold
+        // large base64 data URIs) — the product cards only need the primary
+        // `image`. The detail endpoint (/:id) still returns the full document.
+        // .lean() skips Mongoose hydration for a faster, smaller response.
+        let query = Product.find(filter)
+            .select('-images -colorVariants')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const lim = parseInt(limit, 10);
+        if (Number.isFinite(lim) && lim > 0) query = query.limit(lim);
+
+        const products = await query;
         res.json(products);
     } catch (err) {
         res.status(500).json({ message: err.message });
