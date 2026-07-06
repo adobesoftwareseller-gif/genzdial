@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     try {
         const filter = { active: true };
         if (req.query.placement) filter.placement = req.query.placement;
-        const banners = await Banner.find(filter).sort({ order: 1, createdAt: 1 });
+        const banners = await Banner.find(filter).sort({ order: 1, createdAt: 1 }).lean();
         res.json(banners);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
 
 // Admin: list all (active + inactive)
 router.get('/all', authRequired, async (_req, res) => {
-    const banners = await Banner.find().sort({ order: 1, createdAt: 1 });
+    const banners = await Banner.find().sort({ order: 1, createdAt: 1 }).lean();
     res.json(banners);
 });
 

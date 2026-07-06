@@ -42,12 +42,12 @@ const upload = multer({
 });
 
 router.get('/', async (_req, res) => {
-    const reels = await Reel.find({ active: true }).sort({ order: 1, createdAt: -1 });
+    const reels = await Reel.find({ active: true }).sort({ order: 1, createdAt: -1 }).lean();
     res.json(reels);
 });
 
 router.get('/all', authRequired, async (_req, res) => {
-    const reels = await Reel.find().sort({ order: 1, createdAt: -1 });
+    const reels = await Reel.find().sort({ order: 1, createdAt: -1 }).lean();
     res.json(reels);
 });
 

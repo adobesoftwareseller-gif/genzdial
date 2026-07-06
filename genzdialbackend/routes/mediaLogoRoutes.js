@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/', async (_req, res) => {
     try {
-        const items = await MediaLogo.find({ active: true }).sort({ order: 1, createdAt: 1 });
+        const items = await MediaLogo.find({ active: true }).sort({ order: 1, createdAt: 1 }).lean();
         res.json(items);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -14,7 +14,7 @@ router.get('/', async (_req, res) => {
 });
 
 router.get('/all', authRequired, async (_req, res) => {
-    const items = await MediaLogo.find().sort({ order: 1, createdAt: 1 });
+    const items = await MediaLogo.find().sort({ order: 1, createdAt: 1 }).lean();
     res.json(items);
 });
 
