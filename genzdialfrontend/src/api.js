@@ -32,6 +32,52 @@ const setAuthHeaders = () => {
 // Call this whenever tokens are updated
 setAuthHeaders();
 
+// --- Lightweight client-side caching for public, read-only content ---------
+// Caches GET responses for a short TTL and de-duplicates identical in-flight
+// requests, so navigating between pages doesn't refetch the same data every
+// time. Only public content paths are cached (never admin `/all` lists, auth,
+// or orders), and any create/update/delete clears the cache so admin edits and
+// user actions reflect immediately.
+const CACHE_TTL = 60 * 1000; // 60s — matches the backend Cache-Control window
+const CACHEABLE = [
+    /^\/products/, /^\/banners/, /^\/reels/, /^\/testimonials/,
+    /^\/media-logos/, /^\/faqs/, /^\/promo-messages/, /^\/settings/, /^\/pages/,
+];
+const isCacheable = (url = '') => {
+    const path = url.split('?')[0];
+    if (path.endsWith('/all')) return false; // admin lists must stay live
+    return CACHEABLE.some((re) => re.test(path));
+};
+
+const _cache = new Map();    // key -> { ts, response }
+const _inflight = new Map(); // key -> Promise
+const baseAdapter = axios.getAdapter(axios.defaults.adapter);
+
+api.defaults.adapter = (config) => {
+    const method = (config.method || 'get').toLowerCase();
+    if (method !== 'get' || !isCacheable(config.url)) return baseAdapter(config);
+
+    const key = (config.baseURL || '') + config.url + JSON.stringify(config.params || {});
+    const hit = _cache.get(key);
+    if (hit && Date.now() - hit.ts < CACHE_TTL) return Promise.resolve(hit.response);
+    if (_inflight.has(key)) return _inflight.get(key);
+
+    const p = Promise.resolve(baseAdapter(config))
+        .then((res) => { _cache.set(key, { ts: Date.now(), response: res }); _inflight.delete(key); return res; })
+        .catch((err) => { _inflight.delete(key); throw err; });
+    _inflight.set(key, p);
+    return p;
+};
+
+// Any mutation invalidates the cache so fresh data is fetched next time.
+api.interceptors.response.use(
+    (res) => {
+        if ((res.config.method || 'get').toLowerCase() !== 'get') _cache.clear();
+        return res;
+    },
+    (err) => Promise.reject(err),
+);
+
 export const assetUrl = (u) => {
     if (!u) return '';
     if (/^(https?:|data:|blob:)/i.test(u)) return u;
