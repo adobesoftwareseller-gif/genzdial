@@ -10,7 +10,13 @@ const router = express.Router();
 
 const UPLOADS_ROOT = process.env.UPLOADS_ROOT || path.join(__dirname, '..', 'uploads');
 const uploadDir = path.join(UPLOADS_ROOT, 'qr');
-if (!cloudinaryOn && !fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// Best-effort: create the local upload dir for dev/disk mode. On a read-only
+// filesystem (e.g. Vercel serverless) this would throw and crash the whole
+// function at load, so we swallow it — disk uploads simply won't be available,
+// but the rest of the API stays up. Use Cloudinary in that environment.
+if (!cloudinaryOn && !fs.existsSync(uploadDir)) {
+    try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (_) { /* read-only FS */ }
+}
 
 const storage = cloudinaryOn
     ? multer.memoryStorage()
