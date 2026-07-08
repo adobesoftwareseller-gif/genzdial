@@ -5,8 +5,8 @@ import { useAdminAuth } from './AuthContext.jsx';
 export default function AdminLogin() {
     const { login, isAuthed } = useAdminAuth();
     const navigate = useNavigate();
-    const [email, setEmail] = useState('admin@genzdial.com');
-    const [password, setPassword] = useState('admin123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
