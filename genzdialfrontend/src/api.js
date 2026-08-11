@@ -1,0 +1,108 @@
+import axios from 'axios';
+
+// Resolve API base URL
+const ENV_URL = import.meta.env.VITE_API_URL;
+const DEFAULT_DEV_URL = 'http://localhost:5000/api';
+const DEFAULT_PROD_URL = '/api';
+
+const API_BASE = (
+    ENV_URL ||
+    (import.meta.env.DEV ? DEFAULT_DEV_URL : DEFAULT_PROD_URL)
+).replace(/\/+$/, '');
+
+export const API_URL = API_BASE;
+export const SERVER_ORIGIN = API_BASE.replace(/\/api$/, '') || window.location.origin;
+
+const api = axios.create({ baseURL: API_BASE });
+
+// Automatic Header Setup
+// Admin ya User dono ke liye token handle karega
+const setAuthHeaders = () => {
+    const adminToken = localStorage.getItem('admin_token');
+    const userToken = localStorage.getItem('token'); // Aapke user token ka naam 'token' assume kiya hai
+    
+    if (adminToken) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${adminToken}`;
+    }
+    if (userToken) {
+        api.defaults.headers.common['userauthorization'] = `Bearer ${userToken}`;
+    }
+};
+
+// Call this whenever tokens are updated
+setAuthHeaders();
+
+// --- Lightweight client-side caching for public, read-only content ---------
+// Caches GET responses for a short TTL and de-duplicates identical in-flight
+// requests, so navigating between pages doesn't refetch the same data every
+// time. Only public content paths are cached (never admin `/all` lists, auth,
+// or orders), and any create/update/delete clears the cache so admin edits and
+// user actions reflect immediately.
+const CACHE_TTL = 60 * 1000; // 60s — matches the backend Cache-Control window
+const CACHEABLE = [
+    /^\/products/, /^\/banners/, /^\/reels/, /^\/testimonials/,
+    /^\/media-logos/, /^\/faqs/, /^\/promo-messages/, /^\/settings/, /^\/pages/,
+];
+const isCacheable = (url = '') => {
+    const path = url.split('?')[0];
+    if (path.endsWith('/all')) return false; // admin lists must stay live
+    return CACHEABLE.some((re) => re.test(path));
+};
+
+const _cache = new Map();    // key -> { ts, response }
+const _inflight = new Map(); // key -> Promise
+const baseAdapter = axios.getAdapter(axios.defaults.adapter);
+
+api.defaults.adapter = (config) => {
+    const method = (config.method || 'get').toLowerCase();
+    if (method !== 'get' || !isCacheable(config.url)) return baseAdapter(config);
+
+    const key = (config.baseURL || '') + config.url + JSON.stringify(config.params || {});
+    const hit = _cache.get(key);
+    if (hit && Date.now() - hit.ts < CACHE_TTL) return Promise.resolve(hit.response);
+    if (_inflight.has(key)) return _inflight.get(key);
+
+    const p = Promise.resolve(baseAdapter(config))
+        .then((res) => { _cache.set(key, { ts: Date.now(), response: res }); _inflight.delete(key); return res; })
+        .catch((err) => { _inflight.delete(key); throw err; });
+    _inflight.set(key, p);
+    return p;
+};
+
+// Any mutation invalidates the cache so fresh data is fetched next time.
+api.interceptors.response.use(
+    (res) => {
+        if ((res.config.method || 'get').toLowerCase() !== 'get') _cache.clear();
+        return res;
+    },
+    (err) => Promise.reject(err),
+);
+
+export const assetUrl = (u) => {
+    if (!u) return '';
+    if (/^(https?:|data:|blob:)/i.test(u)) return u;
+    return `${SERVER_ORIGIN}${u.startsWith('/') ? '' : '/'}${u}`;
+};
+
+// Upload an image file to the backend, which stores it on Cloudinary and
+// returns a short URL. Use this everywhere instead of embedding base64 in
+// documents (base64 in MongoDB is what made the site slow).
+export const uploadImage = (file) => {
+    const data = new FormData();
+    data.append('image', file);
+    return api
+        .post('/uploads/image', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then((r) => r.data.url);
+};
+
+// API Calls
+export const fetchProducts = (params = {}) =>
+    api.get('/products', { params }).then((r) => r.data);
+
+export const fetchProduct = (id) =>
+    api.get(`/products/${id}`).then((r) => r.data);
+
+export const verifyPayment = (paymentData) =>
+    api.post('/orders/verify-payment', paymentData).then((r) => r.data);
+
+export default api;

@@ -1,0 +1,6 @@
+.mongo-data
+uploads
+node_modules
+.env
+.env.*
+seed*.js
