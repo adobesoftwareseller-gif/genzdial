@@ -15,6 +15,9 @@ export default function Footer() {
                             <a href="https://www.instagram.com/genzdial?igsh=cmtpcGg1aTQ2b2Q0" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="social-icon">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" /></svg>
                             </a>
+                            <a href="https://www.instagram.com/genz.dial?igsh=MXM5NWJoZDlkaDVqeQ==&igsi=MXM5NWJoZDlkaDVqeQ==" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="social-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" /></svg>
+                            </a>
                         </div>
                     </div>
 
