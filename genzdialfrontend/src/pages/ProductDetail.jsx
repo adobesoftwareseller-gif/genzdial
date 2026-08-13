@@ -253,20 +253,7 @@ export default function ProductDetail() {
                             Add to Cart →
                         </button>
                         <button className="btn-buy-now pd-buy-btn" onClick={() => {
-                            navigate('/checkout', {
-                                state: {
-                                    buyNow: {
-                                        _id: product._id,
-                                        name: product.name,
-                                        brand: product.brand,
-                                        price: product.price,
-                                        mrp: product.mrp,
-                                        image: activeImage,
-                                        category: product.category,
-                                        qty: 1,
-                                    },
-                                },
-                            });
+                            addToCart({ ...product, image: activeImage }, 1);
                         }}>
                             Buy Now
                         </button>
