@@ -10,6 +10,7 @@ const productSchema = new mongoose.Schema(
         highlights: { type: [String], default: [] },
         price: { type: Number, required: true },
         mrp: { type: Number, required: true },
+        ogBoxPrice: { type: Number, default: 0 },
         rating: { type: Number, default: 4.5 },
         reviews: { type: Number, default: 0 },
         category: {

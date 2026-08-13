@@ -4,7 +4,7 @@ import Loader from './Loader.jsx';
 
 const empty = {
     name: '', brand: 'GenZdial', description: '', image: '', images: [], highlights: [],
-    price: 0, mrp: 0, rating: 4.5, reviews: 0,
+    price: 0, mrp: 0, ogBoxPrice: 0, rating: 4.5, reviews: 0,
     category: 'unisex', tag: '', stock: 25,
     trending: false, newArrival: false,
     colorVariants: [],
@@ -157,6 +157,10 @@ export default function AdminProducts() {
                             <input type="number" value={form.mrp} onChange={(e) => onChange('mrp', +e.target.value)} required />
                         </div>
                         <div>
+                            <label>OG Box Price (₹)</label>
+                            <input type="number" value={form.ogBoxPrice} onChange={(e) => onChange('ogBoxPrice', +e.target.value)} />
+                        </div>
+                        <div>
                             <label>Category</label>
                             <select value={form.category} onChange={(e) => onChange('category', e.target.value)}>
                                 <option value="men">Men</option>
@@ -295,7 +299,10 @@ export default function AdminProducts() {
                                     <small className="muted">{p.brand}</small>
                                 </td>
                                 <td style={{ textTransform: 'capitalize' }}>{p.category}</td>
-                                <td>₹{p.price} <small className="muted" style={{ textDecoration: 'line-through' }}>₹{p.mrp}</small></td>
+                                <td>
+                                    ₹{p.price} <small className="muted" style={{ textDecoration: 'line-through' }}>₹{p.mrp}</small>
+                                    <br /><small className="muted">OG Box: ₹{p.ogBoxPrice || 0}</small>
+                                </td>
                                 <td>{p.stock}</td>
                                 <td>
                                     {p.trending && <span className="pill">Trending</span>}

@@ -35,22 +35,24 @@ const orderSchema = new mongoose.Schema(
         address: addressSchema,
         subtotal: Number,
         shipping: Number,
+        withBox: { type: Boolean, default: false },
+        boxFee: { type: Number, default: 0 },
         discount: { type: Number, default: 0 },
         couponCode: { type: String, default: '' },
         couponPercent: { type: Number, default: 0 },
         total: Number,
-        
+
         // --- ADDED FIELDS FOR RAZORPAY INTEGRATION ---
         razorpayOrderId: { type: String, required: true },
         razorpayPaymentId: { type: String, required: true },
         paymentStatus: { type: String, default: 'paid' },
         // ---------------------------------------------
-        
-        paymentRef: String, 
+
+        paymentRef: String,
         status: {
             type: String,
             enum: ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled'],
-            default: 'confirmed', // Updated default to 'confirmed' because we only save after verification
+            default: 'confirmed',
         },
     },
     { timestamps: true }

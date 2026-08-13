@@ -25,14 +25,19 @@ export default function Checkout() {
     const buyNow = location.state?.buyNow || null;
     const items = buyNow ? [buyNow] : cart.items;
     const subtotal = buyNow ? buyNow.price * buyNow.qty : cart.subtotal;
-    const withBox = buyNow ? false : cart.withBox;
-    const boxFee = buyNow ? 0 : cart.boxFee;
-    
+
     const [appliedCoupon, setAppliedCoupon] = useState(buyNow ? null : cart.coupon);
     const discount = appliedCoupon ? appliedCoupon.discount || 0 : (buyNow ? 0 : cart.discount);
 
+    // OG Box add-on — selected here on the checkout page, price comes from each product.
+    const [addOgBox, setAddOgBox] = useState(false);
+    const ogBoxFee = addOgBox
+        ? items.reduce((s, i) => s + (Number(i.ogBoxPrice) || 0) * i.qty, 0)
+        : 0;
+    const hasOgBoxAvailable = items.some((i) => Number(i.ogBoxPrice) > 0);
+
     const shipping = subtotal > 1500 || subtotal === 0 ? 0 : 99;
-    const total = Math.max(0, subtotal + shipping + boxFee - discount);
+    const total = Math.max(0, subtotal + shipping + ogBoxFee - discount);
 
     const [step, setStep] = useState('address'); 
     const [address, setAddress] = useState({
@@ -127,11 +132,9 @@ export default function Checkout() {
             setError('Enter a valid 6-digit pincode');
             return;
         }
-        // Already logged-in users skip straight to payment.
         setStep(user ? 'pay' : 'auth');
     };
 
-    // SECURE: Backend API verified coupon system
     const handleApplyPromo = async () => {
         if(!promoInput.trim()) {
             setPromoMessage('Please enter a valid code');
@@ -140,7 +143,6 @@ export default function Checkout() {
         setVerifyingPromo(true);
         setPromoMessage('');
         try {
-            // Ye backend setup hone ke baad chalega
             const { data } = await api.post('/coupons/validate', { code: promoInput, subtotal });
             setAppliedCoupon({ code: data.code, discount: data.discount });
             setPromoMessage(`Coupon applied! Discount: ₹${data.discount}`);
@@ -152,7 +154,6 @@ export default function Checkout() {
         }
     };
 
-    // SECURE: Production Ready Order Flow
     const placeOrder = async () => {
         setPlacing(true);
         setError('');
@@ -160,32 +161,27 @@ export default function Checkout() {
             const res = await loadRazorpay();
             if (!res) throw new Error("Razorpay failed to load. Check internet connection.");
 
-            // STEP 1: Backend se secure order_id banna chahiye
             const orderPayload = {
-                items, address, subtotal, shipping, total, withBox, boxFee,
+                items, address, subtotal, shipping, total,
+                withBox: addOgBox, boxFee: ogBoxFee,
                 couponCode: appliedCoupon?.code || ''
             };
             
             const { data: rzpOrder } = await api.post('/orders/create-razorpay-order', orderPayload);
 
-            // Map the UI selection to a real Razorpay payment method so the
-            // checkout modal opens directly on the method the user picked.
-            // (Web checkout can pre-select UPI, but can't deep-link into a
-            // specific UPI app — that intent-jump only exists on mobile SDKs.)
             const rzpMethodMap = {
                 gpay: 'upi', phonepe: 'upi', paytm: 'upi', upi_other: 'upi',
                 card: 'card', netbanking: 'netbanking',
             };
             const rzpMethod = rzpMethodMap[selectedMethod] || 'upi';
 
-            // STEP 2: Razorpay Popup Kholna
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_T43iPj7kF0K5zT",
-                amount: rzpOrder.amount, // Secured amount from backend
+                amount: rzpOrder.amount,
                 currency: rzpOrder.currency || "INR",
                 name: "GenzDial",
                 description: "Order Payment",
-                order_id: rzpOrder.id, // Secured ID from backend
+                order_id: rzpOrder.id,
                 method: {
                     upi: true,
                     card: true,
@@ -193,7 +189,6 @@ export default function Checkout() {
                     wallet: true
                 },
                 handler: async function (response) {
-                    // STEP 3: Payment Verification & Final Save
                     try {
                         const { data: finalOrder } = await api.post('/orders/verify-payment', {
                             razorpay_order_id: response.razorpay_order_id,
@@ -202,7 +197,6 @@ export default function Checkout() {
                             orderData: orderPayload
                         });
                         
-                        // Backend returns { success, message, order } — use the nested order
                         setOrder(finalOrder.order || finalOrder);
                         setStep('done');
                         if (!buyNow) cart.clearCart();
@@ -218,12 +212,11 @@ export default function Checkout() {
                     name: address.fullName,
                     contact: address.phone,
                     email: user?.email || "",
-                    method: rzpMethod // Opens Razorpay directly on the selected method
+                    method: rzpMethod
                 },
                 theme: { color: "#8b5cf6" },
                 modal: {
                     ondismiss: function() {
-                        // Agar user popup cancel kar de
                         setPlacing(false);
                     }
                 }
@@ -322,7 +315,27 @@ export default function Checkout() {
                     {step === 'pay' && (
                         <div className="pay-step" style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px' }}>
                             <h3 style={{ fontSize: '20px', margin: '0 0 10px 0' }}>Select a payment method</h3>
-                            
+
+                            {/* OG BOX ADD-ON */}
+                            {hasOgBoxAvailable && (
+                                <div style={{ ...boxStyle, marginBottom: '20px', padding: '16px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={addOgBox}
+                                            onChange={(e) => setAddOgBox(e.target.checked)}
+                                            style={{ marginTop: 3, width: 18, height: 18 }}
+                                        />
+                                        <span>
+                                            <span style={textMain}>Add OG Box</span>
+                                            <span style={{ ...textSub, display: 'block' }}>
+                                                Adds ₹{items.reduce((s, i) => s + (Number(i.ogBoxPrice) || 0) * i.qty, 0)} to your order
+                                            </span>
+                                        </span>
+                                    </label>
+                                </div>
+                            )}
+
                             {/* UPI SECTION */}
                             <div style={headingStyle}>UPI</div>
                             <div style={boxStyle}>
@@ -331,7 +344,6 @@ export default function Checkout() {
                                     <div style={{ flex: 1 }}>
                                         <div style={textMain}>Google Pay</div>
                                     </div>
-                                    {/* Local assets ki jagah text ya emojis use kiye hain for better production practice without relying on external images that can break */}
                                     <span style={{ fontSize: '18px' }}>GPay</span>
                                 </div>
                                 
@@ -456,7 +468,6 @@ export default function Checkout() {
                     <h3 style={{ marginTop: 0 }}>Order Summary</h3>
                     {items.map((i) => (
                         <div key={i._id} className="sum-row" style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                            {/* FIX: Use assetUrl for proper image loading */}
                             <img src={assetUrl(i.image)} alt={i.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '5px' }} />
                             <div style={{ flex: 1 }}>
                                 <div className="sum-name" style={{ fontSize: '14px', fontWeight: '500' }}>{i.name}</div>
@@ -468,8 +479,8 @@ export default function Checkout() {
                     <hr style={{ borderTop: '1px solid #eee', margin: '15px 0' }}/>
                     <div className="row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>Subtotal</span><span>₹{subtotal}</span></div>
                     <div className="row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>Shipping</span><span>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span></div>
-                    {withBox && (
-                        <div className="row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>Original box</span><span>₹{boxFee}</span></div>
+                    {addOgBox && (
+                        <div className="row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>OG Box</span><span>₹{ogBoxFee}</span></div>
                     )}
                     {discount > 0 && (
                         <div className="row" style={{ display: 'flex', justifyContent: 'space-between', color: '#067d62', marginBottom: '8px' }}>

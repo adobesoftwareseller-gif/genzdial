@@ -6,13 +6,13 @@ export function CartProvider({ children }) {
     const [items, setItems] = useState(() => {
         try {
             const raw = JSON.parse(localStorage.getItem('cart') || '[]');
-            // Strip large fields from any legacy entries to avoid quota errors.
             return raw.map((i) => ({
                 _id: i._id,
                 name: i.name,
                 brand: i.brand,
                 price: i.price,
                 mrp: i.mrp,
+                ogBoxPrice: i.ogBoxPrice || 0,
                 image: i.image,
                 category: i.category,
                 qty: i.qty || 1,
@@ -68,6 +68,7 @@ export function CartProvider({ children }) {
         brand: p.brand,
         price: p.price,
         mrp: p.mrp,
+        ogBoxPrice: p.ogBoxPrice || 0,
         image: p.image,
         category: p.category,
     });
@@ -103,8 +104,7 @@ export function CartProvider({ children }) {
 
     const count = items.reduce((s, i) => s + i.qty, 0);
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const BOX_FEE = 500;
-    const boxFee = withBox ? BOX_FEE * count : 0;
+    const boxFee = withBox ? items.reduce((s, i) => s + (Number(i.ogBoxPrice) || 0) * i.qty, 0) : 0;
 
     const discountBase = subtotal + boxFee;
     const rawDiscount = coupon ? Math.round((discountBase * (coupon.percent || 0)) / 100) : 0;
@@ -121,7 +121,7 @@ export function CartProvider({ children }) {
             value={{
                 items, addToCart, removeFromCart, updateQty, clearCart,
                 count, subtotal,
-                withBox, setWithBox, boxFee, BOX_FEE,
+                withBox, setWithBox, boxFee,
                 coupon, applyCoupon, removeCoupon, discount,
                 isDrawerOpen, openDrawer, closeDrawer,
             }}

@@ -33,8 +33,8 @@ const razorpay = new Razorpay({
 // API 1: CREATE RAZORPAY ORDER
 router.post('/create-razorpay-order', userAuth, async (req, res) => {
     try {
-        const { subtotal, shipping, couponCode } = req.body;
-        
+        const { subtotal, shipping, couponCode, boxFee } = req.body;
+
         let discount = 0;
         if (couponCode) {
             try {
@@ -44,8 +44,8 @@ router.post('/create-razorpay-order', userAuth, async (req, res) => {
                 console.error("Coupon validation failed:", e.message);
             }
         }
-        
-        const finalTotal = Math.max(0, Number(subtotal) + Number(shipping) - discount);
+
+        const finalTotal = Math.max(0, Number(subtotal) + Number(shipping) + Number(boxFee || 0) - discount);
         if (finalTotal <= 0) return res.status(400).json({ message: 'Invalid total amount' });
 
         const options = {
@@ -57,7 +57,6 @@ router.post('/create-razorpay-order', userAuth, async (req, res) => {
         const order = await razorpay.orders.create(options);
         res.json(order);
     } catch (err) {
-        // Razorpay SDK errors put the useful text in err.error.description (err.message is empty)
         const rzpMsg = err?.error?.description || err?.message || 'Could not start payment';
         console.error("create-razorpay-order failed:", rzpMsg, err?.error || '');
         res.status(err?.statusCode || 500).json({ message: rzpMsg });
@@ -79,8 +78,8 @@ router.post('/verify-payment', userAuth, async (req, res) => {
             return res.status(400).json({ message: "Payment signature verification failed!" });
         }
 
-        const { items, address, subtotal, shipping, couponCode } = orderData;
-        
+        const { items, address, subtotal, shipping, couponCode, boxFee, withBox } = orderData;
+
         let discount = 0;
         let appliedCode = '';
         if (couponCode) {
@@ -91,7 +90,7 @@ router.post('/verify-payment', userAuth, async (req, res) => {
             } catch (e) {}
         }
 
-        const finalTotal = Math.max(0, Number(subtotal) + Number(shipping) - discount);
+        const finalTotal = Math.max(0, Number(subtotal) + Number(shipping) + Number(boxFee || 0) - discount);
 
         const user = await User.findById(req.user.uid);
         if (!user) return res.status(401).json({ message: 'User not found' });
@@ -111,6 +110,8 @@ router.post('/verify-payment', userAuth, async (req, res) => {
             address,
             subtotal,
             shipping,
+            withBox: !!withBox,
+            boxFee: Number(boxFee) || 0,
             discount: discount,
             couponCode: appliedCode,
             total: finalTotal,
@@ -121,7 +122,6 @@ router.post('/verify-payment', userAuth, async (req, res) => {
             status: 'confirmed',
         });
 
-        // SUCCESS RESPONSE FOR FRONTEND
         return res.status(201).json({
             success: true,
             message: "Payment verified and order placed successfully",
