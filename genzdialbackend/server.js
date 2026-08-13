@@ -23,6 +23,15 @@ const couponRoutes = require('./routes/couponRoutes');
 const pageRoutes = require('./routes/pageRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 
+// Safety net: agar kahin bhi unexpected error aaye jo kisi ne handle nahi kiya,
+// to server crash hone ke bajaye sirf log karke chalta rahe.
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Promise Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
 const app = express();
 
 // Middlewares
@@ -80,7 +89,7 @@ app.use('/api/uploads', uploadRoutes);
 // On Vercel the process is reused between invocations, so we cache the
 // connection promise and reuse it instead of reconnecting every request.
 let dbPromise = null;
-function bootstrap() {
+function connectDB() {
     if (mongoose.connection.readyState === 1) return Promise.resolve();
     if (!dbPromise) {
         dbPromise = mongoose.connect(process.env.MONGO_URI, {
@@ -93,20 +102,45 @@ function bootstrap() {
             minPoolSize: 0,
         }).catch((err) => {
             dbPromise = null; // allow retry on next invocation
-            console.error("DB Connection Error:", err);
+            console.error("DB Connection Error:", err.message);
             throw err;
         });
     }
     return dbPromise;
 }
 
+// Keeps retrying the DB connection in the background instead of giving up.
+// Used only for the always-on server (Render/local) — Vercel calls
+// connectDB() directly per-request via bootstrap().
+function connectWithRetry(delayMs = 5000) {
+    connectDB()
+        .then(() => console.log('MongoDB connected successfully'))
+        .catch(() => {
+            console.error(`Retrying MongoDB connection in ${delayMs / 1000}s...`);
+            setTimeout(() => connectWithRetry(Math.min(delayMs * 2, 60000)), delayMs);
+        });
+}
+
+// Auto-reconnect if an established connection drops later.
+mongoose.connection.on('disconnected', () => {
+    console.error('MongoDB disconnected. Attempting to reconnect...');
+    dbPromise = null;
+    connectWithRetry();
+});
+
+// Kept for Vercel (api/index.js imports { app, bootstrap })
+function bootstrap() {
+    return connectDB();
+}
+
 // Only start a long-lived HTTP server when run directly (e.g. Render / local).
 // On Vercel, api/index.js imports { app, bootstrap } instead.
 if (require.main === module) {
     const PORT = process.env.PORT || 5000;
-    bootstrap()
-        .then(() => app.listen(PORT, () => console.log(`Server running on port ${PORT}`)))
-        .catch(err => console.error("Startup failed:", err));
+    // Start listening immediately so Render sees an open port and marks the
+    // deploy as live, even if MongoDB takes a few tries to connect.
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    connectWithRetry();
 }
 
 module.exports = { app, bootstrap };
