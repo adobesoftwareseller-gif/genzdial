@@ -45,7 +45,7 @@ export default function Footer() {
                                 <span className="contact-icon">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 15.5c-1.2 0-2.5-.2-3.6-.6-.3-.1-.7 0-1 .2l-2.2 2.2c-2.8-1.4-5.1-3.7-6.6-6.6l2.2-2.2c.3-.3.4-.7.2-1C8.7 6.5 8.5 5.2 8.5 4c0-.6-.4-1-1-1H4c-.6 0-1 .4-1 1 0 9.4 7.6 17 17 17 .6 0 1-.4 1-1v-3.5c0-.6-.4-1-1-1z" /></svg>
                                 </span>
-                                <span>+91 9355264173<br />+91 6362121501</span>
+                                <span>+91 6362121501</span>
                             </li>
                             <li>
                                 <span className="contact-icon">
@@ -57,7 +57,7 @@ export default function Footer() {
                                 <span className="contact-icon">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.3 7 13 7 13s7-7.7 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z" /></svg>
                                 </span>
-                                <span>Shop no-1010, Street no-32,<br />Jafrabad, Delhi, 110053</span>
+                                <span>Near Sharma Inter College,<br />Nagar Palika Market, Kale Aam,<br />Bulandshahr - 203001</span>
                             </li>
                         </ul>
                     </div>
