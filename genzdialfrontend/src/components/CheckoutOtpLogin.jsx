@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
-import { auth } from '../firebase.js';
 import { useUserAuth } from '../context/UserAuthContext.jsx';
 
 export default function CheckoutOtpLogin({ phone: initialPhone, name, onVerified, onBack }) {
-    const { loginWithFirebase } = useUserAuth();
+    const { sendOtp, verifyOtp } = useUserAuth();
 
     const [phone, setPhone] = useState(initialPhone || '');
     const [subStep, setSubStep] = useState('phone'); // 'phone' | 'otp'
@@ -12,33 +10,14 @@ export default function CheckoutOtpLogin({ phone: initialPhone, name, onVerified
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [resendTimer, setResendTimer] = useState(0);
+    const [authMode, setAuthMode] = useState('login'); // decided by backend response
     const timerRef = useRef(null);
-    const confirmationRef = useRef(null);
-    const recaptchaRef = useRef(null);
-    const recaptchaContainerId = useRef(`recaptcha-container-${Math.random().toString(36).slice(2)}`);
-
-    useEffect(() => {
-        // Clean up the invisible reCAPTCHA widget when this step unmounts.
-        return () => {
-            recaptchaRef.current?.clear?.();
-            recaptchaRef.current = null;
-        };
-    }, []);
 
     useEffect(() => {
         if (resendTimer <= 0) return;
         timerRef.current = setTimeout(() => setResendTimer((t) => t - 1), 1000);
         return () => clearTimeout(timerRef.current);
     }, [resendTimer]);
-
-    const getVerifier = () => {
-        if (!recaptchaRef.current) {
-            recaptchaRef.current = new RecaptchaVerifier(auth, recaptchaContainerId.current, {
-                size: 'invisible',
-            });
-        }
-        return recaptchaRef.current;
-    };
 
     const handleSendOtp = async (e) => {
         e?.preventDefault();
@@ -48,24 +27,30 @@ export default function CheckoutOtpLogin({ phone: initialPhone, name, onVerified
             return;
         }
         setLoading(true);
+        let mode = 'login';
         try {
-            const verifier = getVerifier();
-            const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
-            confirmationRef.current = confirmation;
-            setSubStep('otp');
-            setResendTimer(30);
+            await sendOtp(phone, 'login');
         } catch (err) {
-            // TEMP DEBUG LOG — remove once the real Firebase error is identified
-            console.error('OTP SEND ERROR:', err.code, err.message, err);
-            setError(err.message?.includes('too-many-requests')
-                ? 'Too many attempts, please try again later'
-                : 'Failed to send OTP. Try again.');
-            // Reset the widget so a retry gets a fresh challenge.
-            recaptchaRef.current?.clear?.();
-            recaptchaRef.current = null;
-        } finally {
-            setLoading(false);
+            if (err.response?.status === 404) {
+                // No account yet for this number — fall back to signup automatically.
+                mode = 'signup';
+                try {
+                    await sendOtp(phone, 'signup');
+                } catch (err2) {
+                    setError(err2.response?.data?.message || 'Failed to send OTP. Try again.');
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                setError(err.response?.data?.message || 'Failed to send OTP. Try again.');
+                setLoading(false);
+                return;
+            }
         }
+        setAuthMode(mode);
+        setSubStep('otp');
+        setResendTimer(30);
+        setLoading(false);
     };
 
     const handleVerifyOtp = async (e) => {
@@ -75,23 +60,15 @@ export default function CheckoutOtpLogin({ phone: initialPhone, name, onVerified
             setError('Enter the OTP you received');
             return;
         }
-        if (!confirmationRef.current) {
-            setError('Session expired, please request OTP again');
-            setSubStep('phone');
-            return;
-        }
         setLoading(true);
         try {
-            const result = await confirmationRef.current.confirm(otp);
-            const idToken = await result.user.getIdToken();
-            await loginWithFirebase(idToken, { name });
+            await verifyOtp(phone, otp, {
+                mode: authMode,
+                name: authMode === 'signup' ? name : undefined,
+            });
             onVerified?.();
         } catch (err) {
-            // TEMP DEBUG LOG — remove once everything works
-            console.error('OTP VERIFY ERROR:', err.code, err.message, err);
-            setError(err.message?.includes('invalid-verification-code')
-                ? 'Invalid OTP, please check and try again'
-                : 'Invalid or expired OTP');
+            setError(err.response?.data?.message || 'Invalid or expired OTP');
         } finally {
             setLoading(false);
         }
@@ -102,14 +79,10 @@ export default function CheckoutOtpLogin({ phone: initialPhone, name, onVerified
         setError('');
         setLoading(true);
         try {
-            const verifier = getVerifier();
-            const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
-            confirmationRef.current = confirmation;
+            await sendOtp(phone, authMode);
             setResendTimer(30);
         } catch (err) {
-            // TEMP DEBUG LOG — remove once the real Firebase error is identified
-            console.error('OTP RESEND ERROR:', err.code, err.message, err);
-            setError('Failed to resend OTP');
+            setError(err.response?.data?.message || 'Failed to resend OTP');
         } finally {
             setLoading(false);
         }
@@ -121,9 +94,6 @@ export default function CheckoutOtpLogin({ phone: initialPhone, name, onVerified
             <p style={{ color: '#565959', fontSize: '13px', marginBottom: '20px' }}>
                 Please login with OTP to continue to payment.
             </p>
-
-            {/* Invisible reCAPTCHA anchor required by Firebase Phone Auth */}
-            <div id={recaptchaContainerId.current} />
 
             {subStep === 'phone' && (
                 <form onSubmit={handleSendOtp}>

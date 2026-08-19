@@ -20,12 +20,14 @@ export function UserAuthProvider({ children }) {
         else delete api.defaults.headers.common.UserAuthorization;
     }, [token]);
 
-    // Called after Firebase phone-OTP verification succeeds on the client.
-    // Sends the Firebase ID token to our backend, which verifies it via
-    // firebase-admin, upserts the User record, and returns our own JWT.
-    const loginWithFirebase = useCallback((idToken, opts = {}) =>
-        api.post('/auth/firebase-login', {
-            idToken,
+    const sendOtp = useCallback((phone, mode = 'login') =>
+        api.post('/auth/send-otp', { phone, mode }).then((r) => r.data), []);
+
+    const verifyOtp = useCallback((phone, otp, opts = {}) =>
+        api.post('/auth/verify-otp', {
+            phone,
+            otp,
+            mode: opts.mode || 'login',
             name: opts.name,
         }).then((r) => {
             const { token: t, user: u } = r.data;
@@ -38,6 +40,7 @@ export function UserAuthProvider({ children }) {
             const pending = pendingActionRef.current;
             pendingActionRef.current = null;
             if (typeof pending === 'function') {
+                // Defer so any closing modal animations / state settle first.
                 setTimeout(() => pending(), 0);
             }
             return r.data;
@@ -70,7 +73,7 @@ export function UserAuthProvider({ children }) {
 
     return (
         <UserAuthContext.Provider
-            value={{ user, token, loginOpen, signupOpen, openLogin, closeLogin, openSignup, closeSignup, loginWithFirebase, logout, requireAuth }}
+            value={{ user, token, loginOpen, signupOpen, openLogin, closeLogin, openSignup, closeSignup, sendOtp, verifyOtp, logout, requireAuth }}
         >
             {children}
         </UserAuthContext.Provider>
