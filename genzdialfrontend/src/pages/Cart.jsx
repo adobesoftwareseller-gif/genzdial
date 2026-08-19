@@ -16,13 +16,18 @@ const TrashIcon = () => (
 export default function Cart() {
     const {
         items, updateQty, removeFromCart, subtotal, clearCart,
-        withBox, setWithBox, boxFee, BOX_FEE,
+        withBox, setWithBox, boxFee,
         coupon, applyCoupon, removeCoupon, discount,
     } = useCart();
     const { requireAuth } = useUserAuth();
     const navigate = useNavigate();
     const shipping = subtotal > 1500 || subtotal === 0 ? 0 : 99;
     const total = Math.max(0, subtotal + shipping + boxFee - discount);
+
+    // Real OG Box fee for everything currently in the cart, shown regardless
+    // of whether the checkbox is ticked (boxFee from context is 0 when untied).
+    const rawBoxFee = items.reduce((s, i) => s + (Number(i.ogBoxPrice) || 0) * i.qty, 0);
+    const hasBoxOption = rawBoxFee > 0;
 
     const [couponInput, setCouponInput] = useState(coupon?.code || '');
     const [couponLoading, setCouponLoading] = useState(false);
@@ -105,24 +110,26 @@ export default function Cart() {
 
                 <div className="summary">
                     <h3 style={{ marginTop: 0, fontWeight: 600 }}>Order Summary</h3>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={withBox}
-                            onChange={(e) => setWithBox(e.target.checked)}
-                            style={{ marginTop: 3 }}
-                        />
-                        <span style={{ fontSize: 14 }}>
-                            With original box
-                            <span style={{ display: 'block', color: 'var(--muted)', fontSize: 12, marginTop: '5px' }}>
-                                Adds ₹{BOX_FEE} per watch to your order
+                    {hasBoxOption && (
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={withBox}
+                                onChange={(e) => setWithBox(e.target.checked)}
+                                style={{ marginTop: 3 }}
+                            />
+                            <span style={{ fontSize: 14 }}>
+                                OG Box
+                                <span style={{ display: 'block', color: 'var(--muted)', fontSize: 12, marginTop: '5px' }}>
+                                    Adds ₹{rawBoxFee} to your order
+                                </span>
                             </span>
-                        </span>
-                    </label>
+                        </label>
+                    )}
                     <div className="row"><span>Subtotal</span><span>₹{subtotal}</span></div>
                     <div className="row"><span>Shipping</span><span>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span></div>
                     {withBox && (
-                        <div className="row"><span>Original box</span><span>₹{boxFee}</span></div>
+                        <div className="row"><span>OG Box</span><span>₹{boxFee}</span></div>
                     )}
 
                     <div className="coupon-box">
