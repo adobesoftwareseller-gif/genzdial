@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext.jsx';
 export default function CartDrawer() {
     const {
         items, updateQty, removeFromCart, subtotal, count,
+        withBox, setWithBox, boxFee,
         isDrawerOpen, closeDrawer,
     } = useCart();
     const navigate = useNavigate();
@@ -14,6 +15,11 @@ export default function CartDrawer() {
         closeDrawer();
         navigate('/checkout');
     };
+
+    // Total OG Box fee for everything currently in the cart, shown regardless
+    // of whether the option is ticked (boxFee from context is 0 when untied).
+    const rawBoxFee = items.reduce((s, i) => s + (Number(i.ogBoxPrice) || 0) * i.qty, 0);
+    const hasBoxOption = rawBoxFee > 0;
 
     return (
         <div className="cart-drawer-overlay" onClick={closeDrawer}>
@@ -57,10 +63,41 @@ export default function CartDrawer() {
                             ))}
                         </div>
 
+                        {hasBoxOption && (
+                            <div
+                                className="cart-drawer-og-box"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '10px',
+                                    padding: '12px 16px',
+                                    margin: '0 16px 12px',
+                                    background: '#f8f9fa',
+                                    border: '1px solid #d5d9d9',
+                                    borderRadius: '8px',
+                                }}
+                            >
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={withBox}
+                                        onChange={(e) => setWithBox(e.target.checked)}
+                                        style={{ width: '18px', height: '18px', accentColor: '#8b5cf6' }}
+                                    />
+                                    <span>
+                                        <strong>Original Box</strong>
+                                        <div style={{ fontSize: '12px', color: '#565959' }}>Include the OG Box for your item(s)</div>
+                                    </span>
+                                </label>
+                                <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>+₹{rawBoxFee}</span>
+                            </div>
+                        )}
+
                         <div className="cart-drawer-footer">
                             <div className="cart-drawer-subtotal">
                                 <span>Subtotal</span>
-                                <span>₹{subtotal}</span>
+                                <span>₹{subtotal + boxFee}</span>
                             </div>
                             <button className="btn-primary cart-drawer-buynow" onClick={handleBuyNow}>
                                 Buy Now
