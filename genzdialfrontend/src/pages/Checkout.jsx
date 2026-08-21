@@ -486,3 +486,13 @@ export default function Checkout() {
                         <div className="row" style={{ display: 'flex', justifyContent: 'space-between', color: '#067d62', marginBottom: '8px' }}>
                             <span>Discount{appliedCoupon ? ` (${appliedCoupon.code})` : ''}</span>
                             <span>− ₹{discount}</span>
+                        </div>
+                    )}
+                    <hr style={{ borderTop: '1px solid #ccc', margin: '15px 0' }}/>
+                    <div className="row total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold' }}><span>Total</span><span>₹{total}</span></div>
+                </aside>
+                )}
+            </div>
+        </section>
+    );
+}
