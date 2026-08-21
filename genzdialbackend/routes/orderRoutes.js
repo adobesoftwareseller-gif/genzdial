@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Settings = require('../models/Settings'); // <-- NAYA IMPORT
 const { authRequired } = require('../middleware/auth');
 const { resolveCoupon } = require('./couponRoutes');
 const Razorpay = require('razorpay');
@@ -30,10 +31,17 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// NAYA HELPER: hamesha DB se current shipping fee fetch karega
+async function getCurrentShippingFee() {
+    const s = await Settings.findOne({ key: 'shipping' });
+    return s ? Number(s.shippingFee) : 99;
+}
+
 // API 1: CREATE RAZORPAY ORDER
 router.post('/create-razorpay-order', userAuth, async (req, res) => {
     try {
-        const { subtotal, shipping, couponCode, boxFee } = req.body;
+        const { subtotal, couponCode, boxFee } = req.body; // <- 'shipping' yahan se hata diya
+        const shipping = await getCurrentShippingFee(); // <- NAYI LINE
 
         let discount = 0;
         if (couponCode) {
@@ -45,7 +53,7 @@ router.post('/create-razorpay-order', userAuth, async (req, res) => {
             }
         }
 
-        const finalTotal = Math.max(0, Number(subtotal) + Number(shipping) + Number(boxFee || 0) - discount);
+        const finalTotal = Math.max(0, Number(subtotal) + shipping + Number(boxFee || 0) - discount);
         if (finalTotal <= 0) return res.status(400).json({ message: 'Invalid total amount' });
 
         const options = {
@@ -78,7 +86,8 @@ router.post('/verify-payment', userAuth, async (req, res) => {
             return res.status(400).json({ message: "Payment signature verification failed!" });
         }
 
-        const { items, address, subtotal, shipping, couponCode, boxFee, withBox } = orderData;
+        const { items, address, subtotal, couponCode, boxFee, withBox } = orderData; // <- 'shipping' yahan se hata diya
+        const shipping = await getCurrentShippingFee(); // <- NAYI LINE
 
         let discount = 0;
         let appliedCode = '';
@@ -90,7 +99,7 @@ router.post('/verify-payment', userAuth, async (req, res) => {
             } catch (e) {}
         }
 
-        const finalTotal = Math.max(0, Number(subtotal) + Number(shipping) + Number(boxFee || 0) - discount);
+        const finalTotal = Math.max(0, Number(subtotal) + shipping + Number(boxFee || 0) - discount);
 
         const user = await User.findById(req.user.uid);
         if (!user) return res.status(401).json({ message: 'User not found' });

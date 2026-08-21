@@ -36,7 +36,10 @@ export default function Checkout() {
         : 0;
     const hasOgBoxAvailable = items.some((i) => Number(i.ogBoxPrice) > 0);
 
-    const shipping = subtotal > 1500 || subtotal === 0 ? 0 : 99;
+    // NAYA: shipping fee ab admin panel se aayega, hardcoded nahi
+    const [shippingFee, setShippingFee] = useState(99);
+
+    const shipping = subtotal > 1500 || subtotal === 0 ? 0 : shippingFee;
     const total = Math.max(0, subtotal + shipping + ogBoxFee - discount);
 
     const [step, setStep] = useState('address'); 
@@ -70,6 +73,13 @@ export default function Checkout() {
     useEffect(() => {
         if (items.length === 0 && step !== 'done') navigate('/cart');
     }, [items, step, navigate]);
+
+    // NAYA: current shipping fee backend se fetch karo (page load par ek baar)
+    useEffect(() => {
+        api.get('/settings/shipping-fee')
+            .then(({ data }) => setShippingFee(Number(data.shippingFee)))
+            .catch(() => {}); // fail ho to default 99 hi rahega
+    }, []);
 
     // Auto-fetch City / State / Area from Pincode (public India Post API)
     useEffect(() => {

@@ -5,6 +5,7 @@ const settingsSchema = new mongoose.Schema({
     paymentQr: { type: String, default: '' }, // /uploads/qr/xxx.png
     upiId: { type: String, default: '' },
     payeeName: { type: String, default: '' },
+    shippingFee: { type: Number, default: 99 }, // <-- NAYA ADD HUA
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);
