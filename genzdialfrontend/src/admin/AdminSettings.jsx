@@ -9,10 +9,20 @@ export default function AdminSettings() {
     const [uploading, setUploading] = useState(false);
     const [msg, setMsg] = useState('');
 
+    // NAYA: shipping fee state
+    const [shippingFee, setShippingFee] = useState('');
+    const [savingShipping, setSavingShipping] = useState(false);
+    const [shippingMsg, setShippingMsg] = useState('');
+
     useEffect(() => {
         api.get('/settings/payment')
             .then((r) => setData(r.data))
             .finally(() => setLoading(false));
+
+        // NAYA: current shipping fee load karo
+        api.get('/settings/shipping-fee')
+            .then((r) => setShippingFee(String(r.data.shippingFee)))
+            .catch(() => {});
     }, []);
 
     const onChange = (k, v) => setData((d) => ({ ...d, [k]: v }));
@@ -64,6 +74,42 @@ export default function AdminSettings() {
         }
     };
 
+    // NAYA: shipping fee update karo
+    const saveShipping = async (e) => {
+        e.preventDefault();
+        if (shippingFee === '' || Number(shippingFee) < 0) {
+            alert('Valid amount daalein');
+            return;
+        }
+        setSavingShipping(true);
+        setShippingMsg('');
+        try {
+            const res = await api.put('/settings/shipping-fee', { amount: Number(shippingFee) });
+            setShippingFee(String(res.data.shippingFee));
+            setShippingMsg('Saved');
+        } catch (err) {
+            alert(err.response?.data?.message || 'Save failed');
+        } finally {
+            setSavingShipping(false);
+        }
+    };
+
+    // NAYA: shipping fee hatao (free shipping / 0 kar do)
+    const removeShipping = async () => {
+        if (!confirm('Shipping charge hatana hai? (Free shipping ho jayegi)')) return;
+        setSavingShipping(true);
+        setShippingMsg('');
+        try {
+            const res = await api.delete('/settings/shipping-fee');
+            setShippingFee(String(res.data.shippingFee));
+            setShippingMsg('Removed — shipping ab free hai');
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed');
+        } finally {
+            setSavingShipping(false);
+        }
+    };
+
     if (loading) return <Loader label="Loading settings…" />;
 
     return (
@@ -71,6 +117,41 @@ export default function AdminSettings() {
             <div className="admin-page-head">
                 <h1 className="admin-title">Payment Settings</h1>
             </div>
+
+            {/* NAYA SECTION: Shipping Fee */}
+            <form className="admin-form" onSubmit={saveShipping} style={{ marginBottom: 24 }}>
+                <h3>Shipping Charge</h3>
+                <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+                    Checkout page par ye fixed shipping charge dikhega (₹1500+ order par already free rehta hai).
+                </p>
+                <div className="grid-2">
+                    <div>
+                        <label>Shipping Fee (₹)</label>
+                        <input
+                            type="number"
+                            min="0"
+                            value={shippingFee}
+                            onChange={(e) => setShippingFee(e.target.value)}
+                            placeholder="99"
+                        />
+                    </div>
+                </div>
+                <div className="form-actions">
+                    <button className="btn-primary" disabled={savingShipping}>
+                        {savingShipping ? 'Saving…' : 'Update Shipping Fee'}
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-danger"
+                        style={{ marginLeft: 12 }}
+                        onClick={removeShipping}
+                        disabled={savingShipping}
+                    >
+                        Remove (Free Shipping)
+                    </button>
+                    {shippingMsg && <span className="muted" style={{ marginLeft: 12, fontSize: 13 }}>{shippingMsg}</span>}
+                </div>
+            </form>
 
             <form className="admin-form" onSubmit={save}>
                 <h3>UPI QR Code</h3>
