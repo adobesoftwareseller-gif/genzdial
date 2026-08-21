@@ -344,7 +344,7 @@ export default function Checkout() {
                                     <div style={{ flex: 1 }}>
                                         <div style={textMain}>Google Pay</div>
                                     </div>
-                                    <span style={{ fontSize: '18px' }}>GPay</span>
+                                    <img src="https://cdn.simpleicons.org/googlepay/4285F4" alt="Google Pay" style={{ height: '24px' }} />
                                 </div>
                                 
                                 <div style={rowStyle} onClick={() => setSelectedMethod('phonepe')}>
@@ -352,7 +352,7 @@ export default function Checkout() {
                                     <div style={{ flex: 1 }}>
                                         <div style={textMain}>PhonePe</div>
                                     </div>
-                                    <span style={{ fontSize: '18px', color: '#5f259f', fontWeight: 'bold' }}>PhonePe</span>
+                                    <img src="https://cdn.simpleicons.org/phonepe/5F259F" alt="PhonePe" style={{ height: '24px' }} />
                                 </div>
 
                                 <div style={rowStyle} onClick={() => setSelectedMethod('paytm')}>
@@ -360,7 +360,7 @@ export default function Checkout() {
                                     <div style={{ flex: 1 }}>
                                         <div style={textMain}>Paytm</div>
                                     </div>
-                                    <span style={{ fontSize: '18px', color: '#002e6e', fontWeight: 'bold' }}>Paytm</span>
+                                    <img src="https://cdn.simpleicons.org/paytm/00BAF2" alt="Paytm" style={{ height: '24px' }} />
                                 </div>
 
                                 <div style={lastRowStyle} onClick={() => setSelectedMethod('upi_other')}>
@@ -486,13 +486,3 @@ export default function Checkout() {
                         <div className="row" style={{ display: 'flex', justifyContent: 'space-between', color: '#067d62', marginBottom: '8px' }}>
                             <span>Discount{appliedCoupon ? ` (${appliedCoupon.code})` : ''}</span>
                             <span>− ₹{discount}</span>
-                        </div>
-                    )}
-                    <hr style={{ borderTop: '1px solid #ccc', margin: '15px 0' }}/>
-                    <div className="row total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold' }}><span>Total</span><span>₹{total}</span></div>
-                </aside>
-                )}
-            </div>
-        </section>
-    );
-}
